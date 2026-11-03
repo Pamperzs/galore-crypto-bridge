@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: galore-crypto-bridge
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NOWPAYMENTS_API_KEY
+        sync: false
+      - key: NOWPAYMENTS_IPN_SECRET
+        sync: false
+      - key: SELLAUTH_API_KEY
+        sync: false
+      - key: SELLAUTH_SHOP_ID
+        sync: false
+      - key: SELLAUTH_STORE_URL
+        sync: false

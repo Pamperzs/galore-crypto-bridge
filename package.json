@@ -1,0 +1,14 @@
+{
+  "name": "sellauth-nowpayments-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bridge between a SellAuth custom payment method and NowPayments invoices",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}

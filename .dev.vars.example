@@ -1,0 +1,8 @@
+# Copy to .dev.vars (gitignored) and fill in for local development.
+NOWPAYMENTS_API_KEY=
+NOWPAYMENTS_IPN_SECRET=
+SELLAUTH_API_KEY=
+SELLAUTH_SHOP_ID=183061
+# Optional: return buyers to their SellAuth invoice page after paying, e.g.
+# SELLAUTH_STORE_URL=https://galorelb.com
+SELLAUTH_STORE_URL=
