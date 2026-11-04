@@ -217,13 +217,33 @@ async function handleIpn(request, env) {
 
   const shopId = env.SELLAUTH_SHOP_ID;
   const base = stripTrailingSlash(env.SELLAUTH_API_BASE || DEFAULT_SELLAUTH_BASE);
+  const authHeaders = { Authorization: `Bearer ${env.SELLAUTH_API_KEY}` };
+
+  // Idempotency guard: never process an invoice SellAuth already completed
+  // (duplicate IPN, or an order we closed manually while debugging).
+  try {
+    const invResp = await fetch(`${base}/v1/shops/${shopId}/invoices/${orderId}`, {
+      headers: authHeaders,
+    });
+    if (invResp.ok) {
+      const inv = await invResp.json();
+      if (inv && (inv.status === "completed" || inv.status === "refunded")) {
+        console.log(`bridge: invoice ${orderId} already ${inv.status} — skipping`);
+        return text("OK (already completed)");
+      }
+    }
+  } catch (err) {
+    console.warn("bridge: invoice status pre-check failed, continuing", err);
+  }
+
+  // SellAuth documents this endpoint as a GET (not POST).
   const processUrl = `${base}/v1/shops/${shopId}/invoices/${orderId}/process?mark_as_paid=true`;
 
   let saResp;
   try {
     saResp = await fetch(processUrl, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.SELLAUTH_API_KEY}` },
+      method: "GET",
+      headers: authHeaders,
     });
   } catch (err) {
     console.error("bridge: sellAuth process request failed", err);

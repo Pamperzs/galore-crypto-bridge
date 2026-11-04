@@ -163,22 +163,52 @@ test("/ipn accepts valid signature but ignores non-finished status", async () =>
   }
 });
 
-test("/ipn finished payment processes the SellAuth invoice as paid", async () => {
+test("/ipn finished payment processes the SellAuth invoice as paid (GET)", async () => {
   const calls = stubFetch([
     [
       "api.sellauth.com",
-      () => new Response('{"success":true,"data":{"status":"completed"}}', { status: 200 }),
+      (url) => {
+        if (url.includes("/process")) {
+          return new Response('{"success":"Invoice processed"}', { status: 200 });
+        }
+        if (url.includes("/invoices/")) {
+          return new Response(JSON.stringify({ status: "pending" }), { status: 200 });
+        }
+        throw new Error("unexpected sellauth url: " + url);
+      },
+    ],
+  ]);
+  try {
+    const res = await worker.fetch(ipnRequest(FINISHED_PAYLOAD), ENV);
+    assert.equal(res.status, 200);
+    assert.equal(calls.length, 2, "pre-check GET + process GET");
+    assert.equal(
+      calls[0].url,
+      "https://api.sellauth.com/v1/shops/183061/invoices/42"
+    );
+    assert.equal(
+      calls[1].url,
+      "https://api.sellauth.com/v1/shops/183061/invoices/42/process?mark_as_paid=true"
+    );
+    assert.equal(calls[1].init.method, "GET", "process must be a GET request");
+    assert.equal(calls[1].init.headers.Authorization, "Bearer sa-key");
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test("/ipn skips processing when the invoice is already completed", async () => {
+  const calls = stubFetch([
+    [
+      "api.sellauth.com",
+      () => new Response(JSON.stringify({ status: "completed" }), { status: 200 }),
     ],
   ]);
   try {
     const res = await worker.fetch(ipnRequest(FINISHED_PAYLOAD), ENV);
     assert.equal(res.status, 200);
     assert.equal(calls.length, 1);
-    assert.equal(
-      calls[0].url,
-      "https://api.sellauth.com/v1/shops/183061/invoices/42/process?mark_as_paid=true"
-    );
-    assert.equal(calls[0].init.headers.Authorization, "Bearer sa-key");
+    assert.ok(!calls[0].url.includes("/process"), "must not re-process");
   } finally {
     globalThis.fetch = origFetch;
   }
